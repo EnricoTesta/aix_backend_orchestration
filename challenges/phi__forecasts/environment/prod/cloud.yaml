@@ -1,0 +1,4 @@
+project_name: phi-data-prod
+project_number: 960421016716
+bucket: phi-data-prod-bucket
+network: phi-data-prod-vault

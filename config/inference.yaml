@@ -1,0 +1,157 @@
+max_dag_retries: 3
+project: '{{ dag_run.conf["project"] }}'
+user_id: '{{ dag_run.conf["user_id"] }}'
+resource_suffix: '{{ dag_run.conf["resource_suffix"] }}'
+user_dataset: '{{ dag_run.conf["user_dataset"] }}'
+zone: '{{ dag_run.conf["zone"] }}'
+repo_gcs_path: '{{ dag_run.conf["repo_gcs_path"] }}'
+code_gcs_path: '{{ dag_run.conf["code_gcs_path"] }}'
+artifacts_gcs_path: '{{ dag_run.conf["artifacts_gcs_path"] }}'
+data_gcs_path: '{{ dag_run.conf["data_gcs_path"] }}'
+logs_gcs_path: '{{ dag_run.conf["logs_gcs_path"] }}'
+evaluation_gcs_path: '{{ dag_run.conf["evaluation_gcs_path"] }}'
+output_gcs_path: '{{ dag_run.conf["output_gcs_path"] }}'
+challenge: '{{ dag_run.conf["challenge"] }}'
+orchestration_sa: '{{ dag_run.conf["orchestration_sa"] }}'
+task:
+
+  create_user_disk:
+    name: 'udisk-{{ dag_run.conf["resource_suffix"] }}'
+    size: 10
+    type: 'projects/{{ dag_run.conf["project"] }}/zones/{{ dag_run.conf["zone"] }}/diskTypes/pd-ssd'
+
+  create_disk_prep_vm:
+    name: 'disk-prep-vm-{{ dag_run.conf["resource_suffix"] }}'
+    machine_type: 'e2-micro'
+    additional_disks:
+      - device_name: 'udisk-{{ dag_run.conf["resource_suffix"] }}'
+        url: 'projects/{{ dag_run.conf["project"] }}/zones/{{ dag_run.conf["zone"] }}/disks/udisk-{{ dag_run.conf["resource_suffix"] }}'
+        mode: 'rw'
+    add_external_ip: True
+    source_image: 'projects/aix-backend-prod/global/images/codebox-boot-image'
+    service_account: True
+
+  format_user_disk:
+    cmd: 'gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet --command=''sudo mkfs.ext4 -m 0 -E lazy_itable_init=0,lazy_journal_init=0,discard /dev/sdb'''
+
+  mount_user_disk:
+    instance: 'disk-prep-vm-{{ dag_run.conf["resource_suffix"] }}'
+    cmd: 'gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet --command=''sudo mkdir -p /mnt/user-disk && sudo mount -o discard,defaults /dev/sdb /mnt/user-disk && sudo mkdir /mnt/user-disk/code/ && sudo mkdir /mnt/user-disk/repo/ && sudo mkdir /mnt/user-disk/input/ && sudo mkdir /mnt/user-disk/eval/ && sudo mkdir /mnt/user-disk/eval/data && sudo mkdir /mnt/user-disk/eval/output && sudo mkdir /mnt/user-disk/output/ && sudo mkdir /mnt/user-disk/logs/ && sudo chmod -R 777 /mnt/user-disk'''
+
+  sync_repo:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }}
+      --project={{ dag_run.conf["project"] }} --quiet
+      --command='gsutil -m rsync -r {{ dag_run.conf["repo_gcs_path"] }} /mnt/user-disk/repo/'
+
+  sync_code:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }}
+      --project={{ dag_run.conf["project"] }} --quiet
+      --command='gsutil -m rsync -r {{ dag_run.conf["code_gcs_path"] }} /mnt/user-disk/code/'
+
+  sync_artifacts:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }}
+      --project={{ dag_run.conf["project"] }} --quiet
+      --command='gsutil -m rsync -r {{ dag_run.conf["artifacts_gcs_path"] }} /mnt/user-disk/input/'
+
+  unzip_code:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }}
+      --project={{ dag_run.conf["project"] }} --quiet
+      --command='unzip /mnt/user-disk/code/*.zip -d /mnt/user-disk/code/'
+
+  sql_execution_branching:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }}
+      --project={{ dag_run.conf["project"] }} --quiet
+      --command='cd /mnt/user-disk/code/ && ls -d */'
+    mode:
+      mode: inference
+
+  bq_execution_inference:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }}
+      --project={{ dag_run.conf["project"] }} --quiet
+      --command='python /codebox/sql_execution.py --project={{ dag_run.conf["project"] }} --source-dataset=inference_layer
+       --user-dataset={{ dag_run.conf["user_dataset"] }} --custom-code-path=/mnt/user-disk/code/'
+
+  sync_inference_data_gcs_disk:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@disk-prep-vm-{{ dag_run.conf["resource_suffix"] }} --zone={{ dag_run.conf["zone"] }}
+      --project={{ dag_run.conf["project"] }} --quiet
+      --command='gsutil -m rsync -r {{ dag_run.conf["data_gcs_path"] }} /mnt/user-disk/input/'
+
+  stop_disk_prep_vm:
+    cmd: >
+      gcloud compute instances stop disk-prep-vm-{{ dag_run.conf["resource_suffix"] }}
+      --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet
+
+  delete_disk_prep_vm:
+    cmd: >
+      gcloud compute instances delete disk-prep-vm-{{ dag_run.conf["resource_suffix"] }}
+      --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet
+
+  create_vault_vm:
+    name: 'vault-vm-{{ dag_run.conf["resource_suffix"] }}'
+    machine_type: 'n1-standard-2'
+    additional_disks:
+      - device_name: 'udisk-{{ dag_run.conf["resource_suffix"] }}'
+        url: 'projects/{{ dag_run.conf["project"] }}/zones/{{ dag_run.conf["zone"] }}/disks/udisk-{{ dag_run.conf["resource_suffix"] }}'
+        mode: 'rw'
+    source_image: 'projects/aix-backend-prod/global/images/codebox-boot-image'
+    vault_network: True
+    startup_script: "#!/bin/bash
+
+      sudo mount -o discard,defaults /dev/sdb /user_workarea && sudo chmod -R 777 /user_workarea\n
+      sudo python /codebox/codebox.py --config-file-uri /codebox/config/inference_config.yaml"
+
+  wait_inference_vault_execution:
+    name: vault-vm-{{ dag_run.conf["resource_suffix"] }}
+    poke_interval: 120
+    timeout: 600
+    mode: reschedule
+
+  delete_vault_vm:
+    cmd: >
+      gcloud compute instances delete vault-vm-{{ dag_run.conf["resource_suffix"] }}
+      --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet
+
+  create_data_extraction_vm:
+    name: 'data-extraction-vm-{{ dag_run.conf["resource_suffix"] }}'
+    machine_type: 'n1-standard-1'
+    additional_disks:
+      - device_name: 'udisk-{{ dag_run.conf["resource_suffix"] }}'
+        url: 'projects/{{ dag_run.conf["project"] }}/zones/{{ dag_run.conf["zone"] }}/disks/udisk-{{ dag_run.conf["resource_suffix"] }}'
+        mode: 'ro'
+    add_external_ip: True
+    service_account: True
+
+  data_extraction_mount_user_disk:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@data-extraction-vm-{{ dag_run.conf["resource_suffix"] }}
+      --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet
+      --command='sudo mkdir -p /user-disk && sudo mount -o discard,defaults /dev/sdb /user-disk && sudo chmod -R 555 /user-disk'
+
+  sync_output:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@data-extraction-vm-{{ dag_run.conf["resource_suffix"] }}
+      --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet
+      --command='gsutil -m rsync -r /user-disk/output {{ dag_run.conf["output_gcs_path"] }}'
+
+  sync_logs:
+    cmd: >
+      gcloud compute ssh {{ dag_run.conf["orchestration_sa"] }}@data-extraction-vm-{{ dag_run.conf["resource_suffix"] }}
+      --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet
+      --command='gsutil -m rsync -r /user-disk/logs {{ dag_run.conf["logs_gcs_path"] }}'
+
+  delete_user_disk:
+    cmd: >
+      gcloud compute disks delete udisk-{{ dag_run.conf["resource_suffix"] }}
+      --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet
+
+  delete_extraction_vm:
+    cmd: >
+      gcloud compute instances delete data-extraction-vm-{{ dag_run.conf["resource_suffix"] }}
+      --zone={{ dag_run.conf["zone"] }} --project={{ dag_run.conf["project"] }} --quiet

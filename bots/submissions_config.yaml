@@ -1,0 +1,104 @@
+bot_dummy:
+  username: 'Paolo'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: False
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_lgbm:
+  username: 'smashBlue'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_sklearn:
+  username: 'The_Great_Mike'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_steal:
+  username: 'Anto'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_pytorch:
+  username: 'Prometheus'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_aix_01:
+  username: 'HAL9000'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_aix_02:
+  username: 'Skard'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_aix_03:
+  username: 'TheQuant'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_aix_04:
+  username: 'Ares'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_aix_05:
+  username: 'Fibonacci'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_aix_06:
+  username: 'AlphaBoy'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_aix_07:
+  username: 'Kirk'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False
+bot_aix_08:
+  username: 'Frank'
+  email: ''
+  password: ''
+  active:
+    aix__stock_market: True
+    aix__testchallenge: False
+    phi__forecasts: False

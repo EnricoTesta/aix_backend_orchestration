@@ -1,0 +1,64 @@
+steps:
+- name: 'eu.gcr.io/google.com/cloudsdktool/cloud-sdk'
+  args: ['gsutil', '-m', 'rsync', '-r', '-d', '.', 'gs://aix_dev_airflow_bucket/backend/']
+  timeout: 600s
+- id: 'tf init'
+  name: 'hashicorp/terraform:1.0.0'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+      if [ -d "challenges/aix__stock_market/environment/$BRANCH_NAME/" ]; then
+        cd challenges/aix__stock_market/environment/$BRANCH_NAME
+        terraform init
+      else
+        for dir in challenges/*/environment/*/
+        do 
+          cd ${dir}   
+          env=${dir%*/}
+          env=${env#*/}
+          echo ""
+          echo "*************** TERRAFORM INIT ******************"
+          echo "******* At environment: ${env} ********"
+          echo "*************************************************"
+          terraform init || exit 1
+          cd ../../
+        done
+      fi
+- id: 'tf plan'
+  name: 'hashicorp/terraform:1.0.0'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - | 
+      if [ -d "challenges/aix__stock_market/environment/$BRANCH_NAME/" ]; then
+        cd challenges/aix__stock_market/environment/$BRANCH_NAME
+        terraform plan
+      else
+        for dir in challenges/*/environment/*/
+        do 
+          cd ${dir}   
+          env=${dir%*/}
+          env=${env#*/}  
+          echo ""
+          echo "*************** TERRAFORM PLAN ******************"
+          echo "******* At environment: ${env} ********"
+          echo "*************************************************"
+          terraform plan || exit 1
+          cd ../../
+        done
+      fi
+- id: 'tf apply'
+  name: 'hashicorp/terraform:1.0.0'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - | 
+      if [ -d "challenges/aix__stock_market/environment/$BRANCH_NAME/" ]; then
+        cd challenges/aix__stock_market/environment/$BRANCH_NAME/      
+        terraform apply -auto-approve
+      else
+        echo "***************************** SKIPPING APPLYING *******************************"
+        echo "Branch '$BRANCH_NAME' does not represent an official environment."
+        echo "*******************************************************************************"
+      fi

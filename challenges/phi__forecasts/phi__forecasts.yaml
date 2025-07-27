@@ -1,0 +1,47 @@
+name: phi__forecasts
+display_name: Phi Forecasts
+frequency: static
+backend_sample_dataset: stocks_sample_data
+active: True
+user_request_trigger_schedule: "*/10 * * * *"
+bot_submission_trigger_schedule:
+email:
+  schedule:
+  until:
+inference:
+  schedule:
+  metamodel_data_gcs_path: "gs://{{ bucket_name }}/metamodel/"
+  inference_data_gcs_path: "gs://{{ bucket_name }}/inference/"
+  logs_data_gcs_path: "gs://{{ bucket_name }}/inference_logs/"
+  bucket: '{{ bucket_name }}'
+  obs_date:
+  artifact_prefix: artifacts/
+  active_prefix: "phi__forecasts/active/"
+  active_user_destination_uri: 'gs://{{ bucket_name }}/inference/active_users'
+  wait_inference_jobs_prefix: "inference/predictions"
+  reset_submission_active_users_uri: 'gs://{{ bucket_name }}/inference/active_users'
+  build_metamodel:
+    destination_uri: "gs://{{ bucket_name }}/metamodel/"
+    sources:
+      predictions_uri: 'gs://{{ bucket_name }}/evaluation/'
+      active_users_uri: "gs://{{ bucket_name }}/inference/active_users"
+  score_metamodel:
+    inference_dir: "gs://{{ bucket_name }}/inference/predictions"
+    metamodel_dir: "gs://{{ bucket_name }}/metamodel/"
+prize:
+  assignment_schedule:
+  amount: 0
+  ref_date:
+  assign_prizes_source_uri: "gs://{{ data_bucket }}/prizes/"
+  build_metamodel:
+    destination_uri: "gs://{{ data_bucket }}/prizes/"
+    sources:
+      predictions_uri: "gs://{{ data_bucket }}/inference/predictions/"
+      active_users_uri: "gs://{{ data_bucket }}/inference/active_users/"
+upload_window:
+  start:
+    weekday: 1
+    hour: 0
+  end:
+    weekday: 7
+    hour: 24

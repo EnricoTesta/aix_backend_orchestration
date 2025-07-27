@@ -1,0 +1,47 @@
+name: aix__stock_market
+display_name: AIX Stock Market
+frequency: weekly
+backend_sample_dataset: stocks_sample_data
+active: True
+user_request_trigger_schedule: "*/10 * * * *"
+bot_submission_trigger_schedule: "0 12 * * 6"
+email:
+  schedule: "0 8 * * 6"
+  until: Sunday @ 12:00 PM UTC
+inference:
+  schedule: "0 18 * * 7"
+  metamodel_data_gcs_path: "gs://{{ bucket_name }}/metamodel/{{macros.ds_add(ds, 5)}}"
+  inference_data_gcs_path: "gs://{{ bucket_name }}/inference/{{macros.ds_add(ds, 5)}}"
+  logs_data_gcs_path: "gs://{{ bucket_name }}/inference_logs/{{macros.ds_add(ds, 5)}}"
+  bucket: '{{ bucket_name }}'
+  obs_date: '{{macros.ds_add(ds, 5)}}'
+  artifact_prefix: artifacts/
+  active_prefix: "aix__stock_market/active/"
+  active_user_destination_uri: 'gs://{{ bucket_name }}/inference/{{macros.ds_add(ds, 5)}}/active_users'
+  wait_inference_jobs_prefix: "inference/{{macros.ds_add(ds, 5)}}/predictions"
+  reset_submission_active_users_uri: 'gs://{{ bucket_name }}/inference/{{macros.ds_add(ds, 5)}}/active_users'
+  build_metamodel:
+    destination_uri: "gs://{{ bucket_name }}/metamodel/{{macros.ds_add(ds, 5)}}"
+    sources:
+      predictions_uri: 'gs://{{ bucket_name }}/evaluation/'
+      active_users_uri: "gs://{{ bucket_name }}/inference/{{macros.ds_add(ds, 5)}}/active_users"
+  score_metamodel:
+    inference_dir: "gs://{{ bucket_name }}/inference/{{macros.ds_add(ds, 5)}}/predictions"
+    metamodel_dir: "gs://{{ bucket_name }}/metamodel/{{macros.ds_add(ds, 5)}}"
+prize:
+  assignment_schedule: "0 19 * * 7"
+  amount: 50
+  ref_date: "{{macros.ds_add(ds, -2)}}"
+  assign_prizes_source_uri: "gs://{{ data_bucket }}/prizes/{{macros.ds_add(ds, -2)}}/"
+  build_metamodel:
+    destination_uri: "gs://{{ data_bucket }}/prizes/{{macros.ds_add(ds, -2)}}/"
+    sources:
+      predictions_uri: "gs://{{ data_bucket }}/inference/{{macros.ds_add(ds, -2)}}/predictions/"
+      active_users_uri: "gs://{{ data_bucket }}/inference/{{macros.ds_add(ds, -2)}}/active_users/"
+upload_window:
+  start:
+    weekday: 1
+    hour: 0
+  end:
+    weekday: 7
+    hour: 12

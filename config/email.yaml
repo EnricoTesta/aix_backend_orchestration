@@ -1,0 +1,34 @@
+api_key:
+user_job_success:
+  from_email: noreply@ai-exchange.io
+  subject: Job Success
+  html_content: >
+        <p>The training job triggered by your code upload on {{ challenge }} completed successfully.<br>
+        Check perfomance and logs on your profile page.</p>
+
+        The AI Exchange Team
+user_job_failure:
+  from_email: noreply@ai-exchange.io
+  subject: Job Failure
+  html_content: >
+        <p>The training job triggered by your code upload on {{ challenge }} failed to complete.<br>
+        Check your profile page for error logs and review how-to videos.</p>
+
+        <p>If the problem persists, drop us a line at support@ai-exchange.io</p>
+
+        The AI Exchange Team
+join_round_reminder:
+  from_email: noreply@ai-exchange.io
+  subject: Join Current Round!
+  html_content: >
+        <p>Hi {{ username }},<br>
+        remember to join current round for {{ challenge }} to become eligible for the prize!</p>
+
+        <p>You will be able to join until {{ until }}.</p>
+
+        The AI Exchange Team
+heartbeat:
+  from_email: noreply@ai-exchange.io
+  subject: Airflow Heartbeat
+  html_content: >
+        Airflow Server Heartbeat
